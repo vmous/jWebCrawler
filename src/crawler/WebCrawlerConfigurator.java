@@ -1,9 +1,7 @@
-/**
- *
- */
 package crawler;
 
-// Dependecy on another project of mine.
+import java.util.Properties;
+
 import toolbox.config.AbstractConfigurator;
 
 /**
@@ -35,6 +33,23 @@ public class WebCrawlerConfigurator extends AbstractConfigurator {
 	 * */
 	private WebCrawlerConfigurator() {
 		super();
+        this.setUserConfFilePath("webcrawler.user.conf");
+        this.setUserConfFileHeader("Web Crawler Configuration File");
+
+        // instantiate the default properties...
+        this.defaultProperties = new Properties();
+
+        // ...and load them
+        this.loadDefaultProperties();
+
+        /*
+         * instantiate the user properties with the default ones as fall-back
+         * values...
+         */
+        this.userProperties = new Properties(this.defaultProperties);
+
+        // ... and then try to load the user defined properties
+        this.loadUserProperties();
 	}
 
 	/**
@@ -48,30 +63,4 @@ public class WebCrawlerConfigurator extends AbstractConfigurator {
 	public static synchronized WebCrawlerConfigurator getInstance() {
 		return instance;
 	}
-
-	/* (non-Javadoc)
-	 * @see AbstractConfigurator#loadDefaults()
-	 */
-	@Override
-	protected void loadDefaults() {
-	    System.out.println("AAAAAAAAAAGFFFFFFFFFFFFFFF");
-		// Clear the default properties...
-		getDefaultProperties().clear();
-
-		// ... and then set each one
-	    getDefaultProperties().setProperty("redirect", "false");
-	    getDefaultProperties().setProperty("timeout", "5");
-	    getDefaultProperties().setProperty("quiet", "false");
-	    getDefaultProperties().setProperty("verbose", "true");
-	    getDefaultProperties().setProperty("recursive", "false");
-	    getDefaultProperties().setProperty("imglinks", "true");
-	    getDefaultProperties().setProperty("max_files", "2000");
-	    getDefaultProperties().setProperty("local_path", "/home/billy/Desktop/");
-	    getDefaultProperties().setProperty("agent", "JCrawler/00001");
-	    getDefaultProperties().setProperty("depth", "0");
-	    getDefaultProperties().setProperty("accept", "text/html");
-	    getDefaultProperties().setProperty("reject", "");
-	    getDefaultProperties().setProperty("threads", "5");
-	}
-
 }
