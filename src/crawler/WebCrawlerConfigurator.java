@@ -33,8 +33,10 @@ public class WebCrawlerConfigurator extends AbstractConfigurator {
 	 * */
 	private WebCrawlerConfigurator() {
 		super();
-        this.setUserConfFilePath("webcrawler.user.conf");
+        this.setUserConfFilePath("webcrawler.user.xml");
         this.setUserConfFileHeader("Web Crawler Configuration File");
+        this.setDefaultConfFilePath("webcrawler.default.xml");
+        this.setDefaultConfFileHeader("Web Crawler Default Configuration File");
 
         // instantiate the default properties...
         this.defaultProperties = new Properties();

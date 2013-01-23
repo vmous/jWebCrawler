@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+<comment>Web Crawler Default Configuration File</comment>
+<entry key="threadNumber">5</entry>
+<entry key="verbose">true</entry>
+<entry key="redirect">false</entry>
+<entry key="logFilePath">jcrawler.log</entry>
+<entry key="storagePath">/tmp/jcrawler/</entry>
+<entry key="maximumFileNumber">2000</entry>
+<entry key="timeout">5</entry>
+<entry key="depth">0</entry>
+<entry key="agent">WebCrawler/vs/v00001</entry>
+    
+<!--
+<entry key="quiet">false</entry>
+<entry key="recursive">false</entry>
+<entry key="imglinks">true</entry>
+<entry key="accept">text/html</entry>
+<entry key="reject"></entry>
+-->
+</properties>
