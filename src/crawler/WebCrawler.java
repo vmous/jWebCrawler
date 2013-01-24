@@ -2,9 +2,20 @@ package crawler;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
+
+/**
+ * A multi-threaded, database assisted, web crawler.
+ *
+ * @author billy
+ */
 public class WebCrawler {
     private static final String VERSION = "0.0.0.1";
 
@@ -19,7 +30,7 @@ public class WebCrawler {
     private final boolean verbose;
 
     /**
-     * Set wheter you want logging output to be redirected to a file.
+     * Set whether you want logging output to be redirected to a file.
      */
     private final boolean redirect;
 
@@ -53,14 +64,14 @@ public class WebCrawler {
     private final int depth;
 
     /**
+     * Set whether image links will be followed.
+     */
+    private final boolean followImgLinks;
+
+    /**
      * The agent name with which the crawler is "introduced" to a web server.
      */
     private final String agent;
-
-    /**
-     * The initial URL to start the Web crawl.
-     */
-    private final URL startURL;
 
     /**
      * The crawler's configurator.
@@ -73,33 +84,37 @@ public class WebCrawler {
     private final ExecutorService executor;
 
     /**
-     * Constructor.
-     *
-     * @param startURL
-     *     The starting URL for the crawling.
+     * A Queue of futures for the submitted threads.
      */
-    public WebCrawler(URL startURL) {
+    private final Queue<Future<?>> futures;
+
+    /**
+     * Constructor.
+     */
+    public WebCrawler() {
         threadNumber = configurator.propertyInteger("threadNumber");
-        System.out.println("threadNumber " + threadNumber);
+//        System.out.println("threadNumber " + threadNumber);
         verbose = configurator.propertyBoolean("verbose");
-        System.out.println("verbose " + verbose);
+//        System.out.println("verbose " + verbose);
         redirect = configurator.propertyBoolean("redirect");
-        System.out.println("redirect " + redirect);
+//        System.out.println("redirect " + redirect);
         logFilePath = configurator.property("logFilePath");
-        System.out.println("logFilePath " + logFilePath);
+//        System.out.println("logFilePath " + logFilePath);
         storagePath = configurator.property("storagePath");
-        System.out.println("storagePath " + storagePath);
+//        System.out.println("storagePath " + storagePath);
         maximumFileNumber = configurator.propertyInteger("maximumFileNumber");
-        System.out.println("maximumFileNumber " + maximumFileNumber);
+//        System.out.println("maximumFileNumber " + maximumFileNumber);
         timeout = configurator.propertyInteger("timeout");
-        System.out.println("timeout " + timeout);
+//        System.out.println("timeout " + timeout);
         depth = configurator.propertyInteger("depth");
-        System.out.println("depth " + depth);
+//        System.out.println("depth " + depth);
+        followImgLinks = configurator.propertyBoolean("followImgLinks");
+//        System.out.println("followImgLinks " + followImgLinks);
         agent = configurator.property("agent");
-        System.out.println("agent " + agent);
-        this.startURL = startURL;
+//        System.out.println("agent " + agent);
 
         executor = Executors.newFixedThreadPool(this.threadNumber);
+        futures = new LinkedList<Future<?>>();
     }
 
     /**
@@ -233,10 +248,10 @@ public class WebCrawler {
                         System.out.println(strAppVersion);
                         abort = true;
                         break;
-//                    case 'x':
-//                        // don't follow links incorporated into images
-//                        configurator.assign("imglinks", "false");
-//                        break;
+                    case 'x':
+                        // don't follow links incorporated into images
+                        configurator.assign("followImgLinks", "false");
+                        break;
 //                    case 'A':
 //                        // comma-separated list of accepted extensions.
 //                        configurator.assign("accept", args[i].substring(2, args[i].length()));
@@ -282,10 +297,12 @@ public class WebCrawler {
             }
         } // End - Parse CMD arguments.
 
-
         if (!abort) {
             if (url != null) {
-                new WebCrawler(url);
+                WebCrawler spiderman = new WebCrawler();
+                spiderman.crawl(new Spider(0, url, 0, spiderman));
+                spiderman.waitCrawl();
+                spiderman.stopCrawl();
             }
             else {
                     System.out.println("Error: Defining the starting URL is mandatory!");
@@ -293,6 +310,81 @@ public class WebCrawler {
             }
         }
     }
+
+    /**
+     * Submits the given spider job to the crawler and adds its future to the
+     * futures queue.
+     *
+     * @param spider
+     *     The {@code Runnable} job to be submitted.
+     */
+    public void crawl(Spider spider) {
+        System.out.println("Starting crawl.");
+        futures.add(executor.submit(spider));
+    }
+
+    /**
+     * <p>
+     * Waits on the futures queue and consumes them. This function blocks until
+     * all futures are consumed (a.k.a. all submitted spider jobs have
+     * finished).
+     * </p>
+     *
+     * <p>
+     * It seems that this function is not the optimal solution to the problem of
+     * "waiting until all tasks are finished before shutting down the executor".
+     * Not sure it works properly at all situations. Needs rework.
+     * </p>
+     */
+    public void waitCrawl() {
+        while (!futures.isEmpty()) {
+            System.out.println(futures.size());
+            try {
+                futures.remove().get();
+            }
+            catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * <p>
+     * Stops the crawler.
+     * <p>
+     *
+     * <p>
+     * The following method shuts down the {@code ExecutorService} of the
+     * crawler in two phases; first by calling {@code shutdown()} to reject
+     * incoming tasks, and then calling {@code shutdownNow()}, if necessary,
+     * to cancel any lingering tasks.
+     * </p>
+     */
+    public void stopCrawl() {
+        System.out.print("Stopping crawl: ");
+        executor.shutdown(); // Disable new tasks from being submitted
+        try {
+            // Wait a while for existing tasks to terminate
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow(); // Cancel currently executing tasks
+                // Wait a while for tasks to respond to being cancelled
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    System.err.println("Pool did not terminate");
+                }
+            }
+            System.out.println("OK");
+        }
+        catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
+    }
+
+
+    // -- Getters/Setters
+
 
     /**
      * Gets the number of threads in the pool.
@@ -370,6 +462,16 @@ public class WebCrawler {
     }
 
     /**
+     * Gets the follow image links switch.
+     *
+     * @return {@code true} if the image links are to be followed;
+     * {@code false} otherwise.
+     */
+    public boolean doFollowImgLinks() {
+        return followImgLinks;
+    }
+
+    /**
      * Gets the agent name used to "introduce" to web servers.
      *
      * @return The agent name.
@@ -379,20 +481,15 @@ public class WebCrawler {
     }
 
     /**
-     * Gets the starting URL.
-     *
-     * @return The starting URL.
-     */
-    public URL getStartURL() {
-        return startURL;
-    }
-
-    /**
      * Gets the web crawler's executor service.
      *
      * @return The executor service.
      */
     public ExecutorService getExecutor() {
         return executor;
+    }
+
+    public Queue<Future<?>> getFutures() {
+        return futures;
     }
 }
