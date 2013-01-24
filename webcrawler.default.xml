@@ -6,7 +6,7 @@
 <entry key="depth">0</entry>
 <entry key="threadNumber">5</entry>
 <entry key="maximumFileNumber">2000</entry>
-<entry key="logFilePath">jcrawler.log</entry>
+<entry key="logFilePath"></entry>
 <entry key="storagePath">/tmp/jcrawler/</entry>
 <entry key="timeout">5</entry>
 <entry key="verbose">true</entry>
