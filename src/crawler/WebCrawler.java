@@ -17,7 +17,67 @@ import java.util.concurrent.TimeUnit;
  * @author billy
  */
 public class WebCrawler {
-    private static final String VERSION = "0.0.0.1";
+
+    /**
+     * The version of the crawler.
+     */
+    private static final String VERSION =
+            "0.7";
+
+    /**
+     * The author of the crawler.
+     */
+    private static final String strAppAuthor =
+            "Vassilis S. Moustakas (vsmoustakas[at]gmail[dot]com)";
+
+    /**
+     * The application name.
+     */
+    private static final String strAppName =
+            "Web Crawler v." + VERSION;
+
+    /**
+     * The basic application usage.
+     */
+    private static final String strAppUsage =
+            strAppName + "\n" +
+            "Usage: java WebCrawler [OPTIONS] <url>\n" +
+            "Use -h for more help";
+
+    /**
+     *
+     */
+    private static final String strAppHeader =
+            strAppName + "\n" +
+            "\n" +
+            "This program is distributed in the hope that it will be useful,\n" +
+            "but WITHOUT ANY WARRANTY; without even the implied warranty of\n" +
+            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the\n" +
+            "GNU General Public License for more details.\n" +
+            "\n" +
+            "Authored by " + strAppAuthor + ".";
+
+    private static final String strAppHelp =
+            strAppName + "\n" +
+            "A simple multi-threaded, database assisted, network content retriever.\n" +
+            "Author: " + strAppAuthor + "\n" +
+            "Usage: java WebCrawler [OPTIONS] <url>\n" +
+            "\n" +
+            "OPTIONS\n" +
+            "\n" +
+            "-a<NAME>\n\tSet the NAME with which the crawler will introduce itself to web servers. Can alternatively be handled by setting the \"agent\" configuration property.\n" +
+//            "-A: Comma-separated list of accepted mimes.\n" +
+            "-d<LEVELS>\n\tSpecify maximum LEVELS number of recursion depth. Can alternatively be handled by setting the \"depth\" configuration property.\n" +
+            "-h\n\tPrint this help.\n" +
+            "-H\n\tPrint the application's header information.\n" +
+            "-m<NUMBER>\n\tSpecify NUMBER of maximum threads in the pool. Can alternatively be handled by setting the \"threadNumber\" configuration property.\n" +
+            "-n<NUMBER>\n\tBound to NUMBER maximum files downloaded. Can alternatively be handled by setting the \"maximumFileNumber\" configuration property.\n" +
+            "-o<PATHTOFILE>\n\tLog messages to the file denoted by PATHTOFILE. If no -o and/or PATHTOFILE is defined then logging will be directed to standard out. Can alternatively be handled by setting the \"logFilePath\" configuration property.\n" +
+            "-p<PATH>\n\tSave retrieved files under PATH directory. Can alternatively be handled by setting the \"storagePath\" configuration property.\n" +
+//            "-R\n\tComma-separated list of rejected mimes.\n" +
+            "-t<SECONDS>\n\tSet SECONDS for HTTP connection time-outs. Can alternatively be handled by setting the \"timeout\" configuration property.\n" +
+            "-v\n\tBe verbose. Can alternatively be handled by setting the \"verbose\" configuration property.\n" +
+            "-x\n\tDo not follow the image links. Can alternatively be handled by setting the \"followImgLinks\" configuration property.\n";
 
     /**
      * The number of threads in the pool.
@@ -94,22 +154,29 @@ public class WebCrawler {
     public WebCrawler() {
         threadNumber = configurator.propertyInteger("threadNumber");
 //        System.out.println("threadNumber " + threadNumber);
+
         verbose = configurator.propertyBoolean("verbose");
 //        System.out.println("verbose " + verbose);
-        redirect = configurator.propertyBoolean("redirect");
-//        System.out.println("redirect " + redirect);
+
         logFilePath = configurator.property("logFilePath");
+        redirect = (logFilePath.trim().isEmpty() ? false : true);
 //        System.out.println("logFilePath " + logFilePath);
+
         storagePath = configurator.property("storagePath");
 //        System.out.println("storagePath " + storagePath);
+
         maximumFileNumber = configurator.propertyInteger("maximumFileNumber");
 //        System.out.println("maximumFileNumber " + maximumFileNumber);
+
         timeout = configurator.propertyInteger("timeout");
 //        System.out.println("timeout " + timeout);
+
         depth = configurator.propertyInteger("depth");
 //        System.out.println("depth " + depth);
+
         followImgLinks = configurator.propertyBoolean("followImgLinks");
 //        System.out.println("followImgLinks " + followImgLinks);
+
         agent = configurator.property("agent");
 //        System.out.println("agent " + agent);
 
@@ -124,65 +191,9 @@ public class WebCrawler {
      *     The command-line arguments.
      */
     public static void main(String[] args) {
-
-        String strAppAuthor = "Vassilis S. Moustakas (vsmoustakas[at]gmail[dot]com)";
-
-        String strAppName =
-                "Web Crawler v." + VERSION;
-
-        String strAppUsage =
-                strAppName + "\n" +
-                "Usage: java WebCrawler [options] <url>\n\n" +
-                "Use -h for more help";
-
-        String strAppVersion =
-                strAppName + "\n" +
-                "\n" +
-                "This program is distributed in the hope that it will be useful,\n" +
-                "but WITHOUT ANY WARRANTY; without even the implied warranty of\n" +
-                "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the\n" +
-                "GNU General Public License for more details.\n" +
-                "\n" +
-                "Authored by " + strAppAuthor + ".";
-
-        String strAppHelp =
-                strAppName + "\n" +
-                "A simple multi-threaded, database assisted, network content retriever.\n" +
-                "Author: " + strAppAuthor + "\n" +
-                "Usage: java JCrawler [options] <url>\n" +
-                "\n" +
-                "Startup:\n" +
-                "  -V,  display the version of JCrawler and exit.\n" +
-                "  -h,  print this help.\n" +
-//                "\n" +
-//                "Logging:\n" +
-//                "  -o<FILE>, log messages to FILE.\n" +
-//                "  -q, enable quiet mode (no output).\n" +
-//                "  -v, be verbose (the default here).\n" +
-//                "\n" +
-//                "Download:\n" +
-//                "  -t<SECONDS>, set SECONDS for time-outs.\n" +
-//                "  -n<NUMBER>, download a maximum of NUMBER files." +
-//                "\n" +
-//                "Directories:\n" +
-//                "  -p<PREFIX>, save retrieved files to PREFIX/...\n" +
-//                "\n" +
-//                "HTTP options:\n" +
-//                "  -u<AGENT>, identify as Agent instead of JCrawler/VERSION.\n" +
-//                "\n" +
-//                "Recursive download:\n" +
-//                "  -r, enable recursive download.\n" +
-//                "  -l<LEVELS>, specify maximum LEVELS of recursion depth." +
-//                "\n" +
-//                "Recursive accept/reject:\n" +
-//                "  -A, comma-separated list of accepted mimes.\n" +
-//                "  -R, comma-separated list of rejected mimes.\n" +
-//                "  -x, don't follow links incorporated into images.\n" +
-//                "\n" +
-                "Multi-threading:" +
-                "  -m<THREADS>, specify THREADS number of threads to be used at maximum.";
-
         URL url = null;
+
+        System.out.println(strAppHeader + "\n");
 
         boolean abort = false;
         // Parse CMD arguments.
@@ -201,69 +212,60 @@ public class WebCrawler {
                 if(args[i].charAt(0) == '-') {
                     // If it is a switch... which switch?
                     switch(args[i].charAt(1)) {
-                    case 'm':
-                        // Maximum number of threads
-                        configurator.assign("threadNumber", args[i].substring(2, args[i].length()));
-                        break;
-                    case 'v':
-                        // Turn on verbose mode and display info
-                        configurator.assign("verbose", "true");
-                        break;
-                    case 'q':
-                        // Turn on verbose mode and display info
-                        configurator.assign("quiet", "true");
-                        break;
-                    case 'o':
-                        // Print output to FILE
-                        configurator.assign("redirect", "true");
-                        configurator.assign("logFilePath", args[i].substring(2, args[i].length()));
-                        break;
-                    case 'p':
-                        // Determine storage area on local FS
-                        configurator.assign("storagePath", args[i].substring(2, args[i].length()));
-//                        q.setFilenamePrefix(args[i].substring(2, args[i].length()));
-                        break;
-                    case 'n':
-                        // set the maximum allowed number of downloaded files
-                        configurator.assign("maximumFileNumber", args[i].substring(2, args[i].length()));
-//                        q.setMaxElements(Integer.parseInt(args[i].substring(2, args[i].length())));
-                        break;
-                    case 't':
-                        // define connection time-out period
-                        configurator.assign("timeout", args[i].substring(2, args[i].length()));
-                        break;
-                    case 'd':
-                        // determine "recursive" traversing of pages
-//                        configurator.assign("recursive", "true");
-                        // define depth of crawling function in levels
-                        configurator.assign("depth", args[i].substring(2, args[i].length()));
-                        break;
                     case 'a':
                         // Determine the name with which the crawler is introduced to the
                         // various web servers it traverses.
                         configurator.assign("agent", args[i].substring(2, args[i].length()));
                         break;
-                    case 'V':
-                        // Print application version
-                        System.out.println(strAppVersion);
-                        abort = true;
-                        break;
-                    case 'x':
-                        // don't follow links incorporated into images
-                        configurator.assign("followImgLinks", "false");
-                        break;
 //                    case 'A':
 //                        // comma-separated list of accepted extensions.
 //                        configurator.assign("accept", args[i].substring(2, args[i].length()));
 //                        break;
-//                    case 'R':
-//                        // comma-separated list of rejected extensions.
-//                        configurator.assign("accept", args[i].substring(2, args[i].length()));
-//                        break;
+                    case 'd':
+                        // define depth of crawling function in levels
+                        configurator.assign("depth", args[i].substring(2, args[i].length()));
+                        break;
                     case 'h':
                         // print help info
                         System.out.println(strAppHelp);
                         abort = true;
+                        break;
+                    case 'H':
+                        // Print application header
+                        System.out.println(strAppHeader);
+                        abort = true;
+                        break;
+                    case 'm':
+                        // Maximum number of threads
+                        configurator.assign("threadNumber", args[i].substring(2, args[i].length()));
+                        break;
+                    case 'n':
+                        // set the maximum allowed number of downloaded files
+                        configurator.assign("maximumFileNumber", args[i].substring(2, args[i].length()));
+                        break;
+                    case 'o':
+                        // Redirect crawling output to a file
+                        configurator.assign("logFilePath", args[i].substring(2, args[i].length()));
+                        break;
+                    case 'p':
+                        // Determine storage area on local FS
+                        configurator.assign("storagePath", args[i].substring(2, args[i].length()));
+                        break;
+//                    case 'R':
+//                        // comma-separated list of rejected extensions.
+//                        configurator.assign("accept", args[i].substring(2, args[i].length()));
+//                        break;
+                    case 't':
+                        // define connection time-out period
+                        configurator.assign("timeout", args[i].substring(2, args[i].length()));
+                        break;
+                    case 'v':
+                        // Turn on/off verbose mode
+                        configurator.assign("verbose", "true");
+                        break;
+                    case 'x':
+                        // don't follow links incorporated into images
+                        configurator.assign("followImgLinks", "false");
                         break;
                     default:
                         // cmd line contained a non identifiable switch
@@ -300,9 +302,9 @@ public class WebCrawler {
         if (!abort) {
             if (url != null) {
                 WebCrawler spiderman = new WebCrawler();
-                spiderman.crawl(new Spider(0, url, 0, spiderman));
-                spiderman.waitCrawl();
-                spiderman.stopCrawl();
+                spiderman.start(url);
+                spiderman.block();
+                spiderman.stop();
             }
             else {
                     System.out.println("Error: Defining the starting URL is mandatory!");
@@ -319,8 +321,12 @@ public class WebCrawler {
      *     The {@code Runnable} job to be submitted.
      */
     public void crawl(Spider spider) {
-        System.out.println("Starting crawl.");
         futures.add(executor.submit(spider));
+    }
+
+    public void start(URL url) {
+        System.out.println("Crawler started...");
+        crawl(new Spider(0, url, 0, this));
     }
 
     /**
@@ -336,7 +342,7 @@ public class WebCrawler {
      * Not sure it works properly at all situations. Needs rework.
      * </p>
      */
-    public void waitCrawl() {
+    public void block() {
         while (!futures.isEmpty()) {
             System.out.println(futures.size());
             try {
@@ -360,8 +366,8 @@ public class WebCrawler {
      * to cancel any lingering tasks.
      * </p>
      */
-    public void stopCrawl() {
-        System.out.print("Stopping crawl: ");
+    public void stop() {
+        System.out.print("Stopping crawler: ");
         executor.shutdown(); // Disable new tasks from being submitted
         try {
             // Wait a while for existing tasks to terminate
