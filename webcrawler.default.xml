@@ -10,6 +10,7 @@
 <entry key="maximumFileNumber">2000</entry>
 <entry key="timeout">5</entry>
 <entry key="depth">0</entry>
+<entry key="followImgLinks">true</entry>
 <entry key="agent">WebCrawler/vs/v00001</entry>
     
 <!--
