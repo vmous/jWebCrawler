@@ -1,0 +1,82 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>jWebCrawler</groupId>
+  <artifactId>jWebCrawler</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>jWebCrawler</name>
+  <description>A multi-threaded, database assisted, web crawler. </description>
+  
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <eclipselink.version>2.4.0</eclipselink.version>
+    <mysqlconnector.version>5.1.21</mysqlconnector.version>
+    <junit.version>4.8.2</junit.version>
+    <jtoolbox.version>0.0.1-SNAPSHOT</jtoolbox.version>
+  </properties>
+  
+  <repositories>
+    <repository>
+      <id>EclipseLink</id>
+      <url>http://download.eclipse.org/rt/eclipselink/maven.repo</url>
+    </repository>
+  </repositories>
+  
+  <dependencies>
+    
+    <!-- eclipselink.jar with dependencies except commonj.sdo -->
+    <dependency>
+      <groupId>org.eclipse.persistence</groupId>
+      <artifactId>eclipselink</artifactId>
+      <version>${eclipselink.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>commonj.sdo</artifactId>
+          <groupId>commonj.sdo</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+ 
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>${mysqlconnector.version}</version>
+    </dependency>
+ 
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>jToolbox</groupId>
+      <artifactId>jToolbox</artifactId>
+      <version>${jtoolbox.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    
+  </dependencies>
+  
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test</testSourceDirectory>
+    <resources>
+      <resource>
+        <directory>src</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <source>1.7</source>
+          <target>1.7</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
