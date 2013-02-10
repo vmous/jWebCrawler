@@ -1,7 +1,7 @@
 package crawler.content;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -29,10 +29,15 @@ public class MIME {
      * {@code Content}s associated with it. The {@code One-} part is mapped by
      * the {@code mime} field of the {@code Content} object.
      *
+     * Data structure implementing the {@code Set} interface in order not to
+     * allow duplicates. Using {@code HashSet} implementation here in favor of
+     * speed over ordering guarantees (otherwise use {@code TreeSet) or
+     * {@code LinkedHashSet}.
+     *
      * @see {@link crawler.content.Content}
      */
     @OneToMany(mappedBy="mime")
-    private final List<Content> contents = new ArrayList<Content>();
+    private final Set<Content> contents = new HashSet<Content>();
 
 
     // -- Getters/Setters
@@ -79,12 +84,12 @@ public class MIME {
     }
 
     /**
-     * Gets the list of contents associated with this MIME.
+     * Gets the set of contents associated with this MIME.
      *
      * @return
      *     The list of contents.
      */
-    public List<Content> getContents() {
+    public Set<Content> getContents() {
         return contents;
     }
 

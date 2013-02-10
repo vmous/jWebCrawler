@@ -180,4 +180,44 @@ public class Content {
         this.mime = mime;
     }
 
+
+    // -- Overriding
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+
+        final int PRIME = 31;
+        int result = 1;
+
+        result = PRIME * result + ((remoteURI == null) ? 0 : remoteURI.hashCode());
+
+        result = PRIME * result + ((localURI == null) ? 0 : localURI.hashCode());
+
+        result = PRIME * result + ((title == null) ? 0 : title.hashCode());
+
+        return result;
+
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+
+        if (this == obj) return true;
+
+        if (obj == null || this.getClass() != obj.getClass()) return false;
+
+        Content other = (Content) obj;
+
+        return  ( this.remoteURI == other.remoteURI || (this.remoteURI != null && this.remoteURI.equals(other.remoteURI)) ) &&
+                ( this.localURI == other.localURI || (this.localURI != null && this.localURI.equals(other.localURI)) ) &&
+                ( this.title == other.title || (this.title != null && this.title.equals(other.title)) );
+
+
+    }
 }
