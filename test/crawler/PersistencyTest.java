@@ -71,8 +71,6 @@ public class PersistencyTest extends TestCase {
             m.getContents().add(c);
 
             em.persist(c);
-            em.persist(d);
-            em.persist(m);
         }
 
         // End the local transaction by commit.

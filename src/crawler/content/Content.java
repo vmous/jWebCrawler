@@ -1,5 +1,6 @@
 package crawler.content;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -38,7 +39,7 @@ public class Content {
      *
      * @see {@link crawler.content.Domain}
      */
-    @ManyToOne(fetch=FetchType.LAZY)
+    @ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
     @JoinColumn(name="fk_domain_id")
     private Domain domain;
 
@@ -52,7 +53,7 @@ public class Content {
      *
      * @see {@link crawler.content.MIME}
      */
-    @ManyToOne(fetch=FetchType.LAZY)
+    @ManyToOne(fetch=FetchType.LAZY, cascade=CascadeType.PERSIST)
     @JoinColumn(name="fk_mime_id")
     private MIME mime;
 
@@ -182,6 +183,7 @@ public class Content {
 
 
     // -- Overriding
+
 
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
