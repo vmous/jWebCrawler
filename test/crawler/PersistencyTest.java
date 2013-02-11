@@ -1,9 +1,11 @@
 package crawler;
 
+import java.util.List;
+
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,32 +48,49 @@ public class PersistencyTest extends TestCase {
         em.getTransaction().begin();
 
         // Read the existing entries.
-        Query q = em.createQuery("SELECT x FROM Content x");
 
-        if (q.getResultList().size() == 0) {
-            assertTrue(q.getResultList().size() == 0);
+        // Create the content.
+        Content c = new Content();
 
-            // Create the content.
-            Content c = new Content();
-
-            // Create the domain
-            Domain d = new Domain();
-            d.setName("jazzman.webhop.net");
-            // Set the domain for this content...
-            c.setDomain(d);
-            // ...add this content to the domain's list.
+        // Create the domain
+        String domainName = "jazzman.webhop.net";
+        // Check if it already exists.
+        TypedQuery<Domain> dq = em.createQuery("SELECT x FROM Domain x WHERE x.name = '" + domainName + "'", Domain.class);
+        List<Domain> dl = dq.getResultList();
+        Domain d;
+        if (dl.size() == 0) {
+            d = new Domain();
+            d.setName(domainName);
+            // Add this content to the domain's set.
             d.getContents().add(c);
-
-            // Create the MIME
-            MIME m = new MIME();
-            m.setContentType("text/html");
-            // Set the mime for this content...
-            c.setMime(m);
-            // ...add this contents to the MIME's list.
-            m.getContents().add(c);
-
-            em.persist(c);
         }
+        else {
+            assertEquals(1, dl.size());
+            d = dl.remove(0);
+        }
+        // Set the domain for this content...
+        c.setDomain(d);
+
+        // Create the MIME
+        String mimeContentType = "text/html";
+        // Check if it already exists.
+        TypedQuery<MIME> mq = em.createQuery("SELECT x FROM MIME x WHERE x.contentType = '" + mimeContentType + "'", MIME.class);
+        List<MIME> ml = mq.getResultList();
+        MIME m;
+        if (ml.size() == 0) {
+            m = new MIME();
+            m.setContentType(mimeContentType);
+            // Add this contents to the MIME's set.
+            m.getContents().add(c);
+        }
+        else {
+            assertEquals(1, ml.size());
+            m = ml.remove(0);
+        }
+        // Set the mime for this content...
+        c.setMime(m);
+
+        em.persist(c);
 
         // End the local transaction by commit.
         em.getTransaction().commit();
