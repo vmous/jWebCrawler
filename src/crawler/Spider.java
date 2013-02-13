@@ -7,7 +7,18 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Vector;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.persistence.TypedQuery;
+
+import crawler.content.Content;
+import crawler.content.Domain;
+import crawler.content.MIME;
 
 import toolbox.util.URLManipulator;
 
@@ -27,6 +38,7 @@ public class Spider implements Runnable {
 
     public Spider(int id, URL url, int level, WebCrawler spiderman) {
         this.id = id;
+
         this.url = url;
         this.level = level;
         this.spiderman = spiderman;
@@ -43,76 +55,90 @@ public class Spider implements Runnable {
     private void workItOut() {
         StringBuilder info = new StringBuilder(1024);
 
+        String strURL = this.url.toString();
+        int contentLength;
+        String contentType;
+        String domainName;
+        String rFilePathName;
+        String rFilePath;
+        String rFileName;
+        String lFilePathName;
+        String lFilePath;
+        String lFileName;
+        String title;
+
         info.append("##########" + "\n");
-        info.append("# [" + id + "] on \" " + url.toString() + "\"\n");
+        info.append("# [" + id + "] on \" " + strURL + "\"\n");
         // The objects that we're dealing with here a strings for urls
         try {
             HttpURLConnection conn = initHttpConn(url);
 
-            info.append("# Length: " + conn.getContentLength()  + " [" + conn.getContentType() + "]\n");
+            contentLength = conn.getContentLength();
+            contentType = conn.getContentType();
 
             // Prepare to everything that is needed
-            String filePathName = url.getFile();
-            String hostName = url.getHost();
-            String filePath = filePathName.substring(0, filePathName.lastIndexOf('/') + 1);
-            String fileName = filePathName.substring( (filePathName.lastIndexOf('/')) + 1 );
+            domainName = url.getHost();
+            rFilePathName = url.getFile();
+            rFilePath = rFilePathName.substring(0, rFilePathName.lastIndexOf('/') + 1);
+            rFileName = rFilePathName.substring( (rFilePathName.lastIndexOf('/')) + 1 );
 
-            if(fileName.equalsIgnoreCase("")) {
-                fileName = "index.html";
-            }
-            String fileMime = conn.getContentType();
+            info.append(
+                    "# Content Length: " + contentLength  + "\n" +
+                    "# Content Type: " + contentType + "\n" +
+                    "# File: " + rFileName + "\n"
+                    );
 
-            if(fileName.endsWith(".mpg")) {
-                info.append("# Ignoring .mpg file.\n");
-                return;
-            }
+            lFilePath = URLManipulator.constructSavePath(spiderman.getStoragePath(), domainName + rFilePath);
+            lFileName = rFileName.equalsIgnoreCase("") ? "index.html" : rFileName;
+            lFilePathName = lFilePath + lFileName;
 
-            String savePath = URLManipulator.constructSavePath(spiderman.getStoragePath(), hostName + filePath);
-            File path = new File(savePath);
+            File path = new File(lFilePath);
             if(!path.exists()) {
                 path.mkdirs();
             }
 
-            String saveName = savePath + fileName;
-
             // Download URL
-            info.append("# Saving file " + saveName + ": ");
-            URLManipulator.streamURLtoFile(url, saveName);
+            info.append("# Saving to " + lFilePathName + ": ");
+            URLManipulator.streamURLtoFile(url, lFilePathName);
             info.append("OK\n");
 
-//            String title = fileName;
+            title = lFileName;
 
             // if url is a web page try to extract hyperlinks
-            if(fileMime.contains("text/html")) {
+            if(contentType.contains("text/html")) {
                 String rawPage = URLManipulator.streamURLToString(url);
                 String smallPage = rawPage.toLowerCase().replaceAll("\\s", " ");
 
                 info.append("# Extracting title: ");
-                String tmpTitle = null;
-                tmpTitle = URLManipulator.extractTitle(rawPage, smallPage);
-                if(tmpTitle != null) {
-//                    title = tmpTitle;
+                String t = URLManipulator.extractTitle(rawPage, smallPage);
+                if (!t.equals("")) {
+                    title = t;
+                    info.append("OK\n");
                 }
-                info.append("OK\n");
+                else {
+                    info.append("FAILED\n");
+                }
 
                 // If you haven't reached the maximum depth, extract links and push them.
                 if (level < spiderman.getDepth()) {
                     info.append("# Extracting links: ");
                     // treat the url as an html file and try to extract links
-                    Vector<String> links =
+                    Set<String> links =
                             URLManipulator.extractLinks(
                                     rawPage,
                                     smallPage,
                                     spiderman.doFollowImgLinks()
                                     );
 
-                    // Convert each link text to a url and enque
+                    // Convert each link text to a url and enqueue
                     int linkNumber = 0;
-                    for (int n = 0; n < links.size(); n++) {
+                    Iterator<String> iter = links.iterator();
+
+                    while (iter.hasNext()) {
                         try {
                             // urls might be relative to current page
 //                            URL link = new URL(url, links.elementAt(n));
-                            URL link = new URL(links.elementAt(n));
+                            URL link = new URL(iter.next());
                             spiderman.crawl(new Spider(0, link, level + 1, spiderman));
                             linkNumber++;
                         }
@@ -122,16 +148,70 @@ public class Spider implements Runnable {
                             // have failed.
                         }
                     }
+
                     info.append(linkNumber + " valid links found.\n");
                 }
             }
 
             info.append("# Storing to database: ");
-            // store info into database
-//          DBObject.storeCrawlInfo(title, hostName, url.toString(), saveName, fileMime);
-            info.append("NO DB AVAILABLE YET\n");
 
+            // TODO: Make PERSISTENCE_UNIT_NAME a property of the application.
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("jWebCrawler");
+            EntityManager em = emf.createEntityManager();
 
+            // Begin a new local transaction.
+            em.getTransaction().begin();
+
+            // Read the existing entries.
+
+            // Create the content.
+            Content c = new Content();
+            c.setRemoteURI(rFilePathName);
+            c.setLocalURI(lFilePathName);
+            c.setTitle(title);
+
+            // Create the domain
+            // Check if it already exists.
+            TypedQuery<Domain> dq = em.createQuery("SELECT x FROM Domain x WHERE x.name = '" + domainName + "'", Domain.class);
+            List<Domain> dl = dq.getResultList();
+            Domain d;
+            if (dl.size() == 0) {
+                d = new Domain();
+                d.setName(domainName);
+                // Add this content to the domain's set.
+                d.getContents().add(c);
+            }
+            else {
+                assert (dl.size() == 1);
+                d = dl.remove(0);
+            }
+            // Set the domain for this content...
+            c.setDomain(d);
+
+            // Create the MIME
+            // Check if it already exists.
+            TypedQuery<MIME> mq = em.createQuery("SELECT x FROM MIME x WHERE x.contentType = '" + contentType + "'", MIME.class);
+            List<MIME> ml = mq.getResultList();
+            MIME m;
+            if (ml.size() == 0) {
+                m = new MIME();
+                m.setContentType(contentType);
+                // Add this contents to the MIME's set.
+                m.getContents().add(c);
+            }
+            else {
+                assert (ml.size() == 1);
+                m = ml.remove(0);
+            }
+            // Set the mime for this content...
+            c.setMime(m);
+
+            em.persist(c);
+
+            // End the local transaction by commit.
+            em.getTransaction().commit();
+
+            em.close();
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
