@@ -4,6 +4,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,7 +47,7 @@ public class WebCrawler {
             "Use -h for more help";
 
     /**
-     *
+     * The application header.
      */
     private static final String strAppHeader =
             strAppName + "\n" +
@@ -57,6 +59,9 @@ public class WebCrawler {
             "\n" +
             "Authored by " + strAppAuthor + ".";
 
+    /**
+     * The application help.
+     */
     private static final String strAppHelp =
             strAppName + "\n" +
             "A simple multi-threaded, database assisted, network content retriever.\n" +
@@ -149,6 +154,13 @@ public class WebCrawler {
     private final Queue<Future<?>> futures;
 
     /**
+     * A map for storing the already visited web pages by the web crawler.
+     * Using {@code ConcurrentMap<K, V>} to allow multiple reads, single write
+     * by the crawler's threads.
+     */
+    private final ConcurrentMap<String, URL> visited;
+
+    /**
      * Constructor.
      */
     public WebCrawler() {
@@ -182,6 +194,7 @@ public class WebCrawler {
 
         executor = Executors.newFixedThreadPool(this.threadNumber);
         futures = new LinkedList<Future<?>>();
+        visited = new ConcurrentHashMap<String, URL>();
     }
 
     /**
@@ -314,16 +327,35 @@ public class WebCrawler {
     }
 
     /**
-     * Submits the given spider job to the crawler and adds its future to the
-     * futures queue.
+     * Offers the given spider job to the crawler. The job's URL is checked
+     * whether it is already processed. If not, it is submitted its future
+     * added to the futures' queue. Else the job is discarded.
      *
      * @param spider
      *     The {@code Runnable} job to be submitted.
+     *
+     * @return
+     *     {@code true} if the offered job was accepted; {@code false}
+     *     otherwise.
      */
-    public void crawl(Spider spider) {
-        futures.add(executor.submit(spider));
+    public boolean crawl(Spider spider) {
+        boolean accepted = false;
+
+        // Put the job's URL to the visited registry.
+        if (visited.putIfAbsent(spider.getUrl().toString(), spider.getUrl()) == null) {
+            futures.add(executor.submit(spider));
+            accepted = true;
+        }
+
+        return accepted;
     }
 
+    /**
+     * Triggers the crawling process.
+     *
+     * @param url
+     *     The initial URL.
+     */
     public void start(URL url) {
         System.out.println("Crawler started...");
         crawl(new Spider(0, url, 0, this));
@@ -395,7 +427,8 @@ public class WebCrawler {
     /**
      * Gets the number of threads in the pool.
      *
-     * @return The number of threads in the pool.
+     * @return
+     *     The number of threads in the pool.
      */
     public int getThreadNumber() {
         return threadNumber;
@@ -404,7 +437,8 @@ public class WebCrawler {
     /**
      * Gets the verbose switch.
      *
-     * @return {@code true} if the verbose mode is enabled; {@code false}
+     * @return
+     *     {@code true} if the verbose mode is enabled; {@code false}
      *         otherwise.
      */
     public boolean isVerbose() {
@@ -414,7 +448,8 @@ public class WebCrawler {
     /**
      * Gets the redirect switch.
      *
-     * @return {@code true} if the redirect mode is enabled; {@code false}
+     * @return
+     *     {@code true} if the redirect mode is enabled; {@code false}
      *         otherwise.
      */
     public boolean isRedirect() {
@@ -424,7 +459,8 @@ public class WebCrawler {
     /**
      * Gets the path to the log file.
      *
-     * @return The path to the log file.
+     * @return
+     *     The path to the log file.
      */
     public String getLogFilePath() {
         return logFilePath;
@@ -434,7 +470,8 @@ public class WebCrawler {
      * Gets the the path to the file-system where the downloaded files will be
      * stored into.
      *
-     * @return The file-system path where the downloaded files will be stored.
+     * @return
+     *     The file-system path where the downloaded files will be stored.
      */
     public String getStoragePath() {
         return storagePath;
@@ -443,7 +480,8 @@ public class WebCrawler {
     /**
      * Gets the maximum number of files to be downloaded.
      *
-     * @return The maximum number of files to be downloaded.
+     * @return
+     *     The maximum number of files to be downloaded.
      */
     public int getMaximumFileNumber() {
         return maximumFileNumber;
@@ -452,7 +490,8 @@ public class WebCrawler {
     /**
      * Gets the connection timeout period.
      *
-     * @return The connection timeout period (in seconds).
+     * @return
+     *     The connection timeout period (in seconds).
      */
     public int getTimeout() {
         return timeout;
@@ -461,7 +500,8 @@ public class WebCrawler {
     /**
      * Gets the number of levels that crawling should take place.
      *
-     * @return The number of levels the crawler is going to descent.
+     * @return
+     *     The number of levels the crawler is going to descent.
      */
     public int getDepth() {
         return depth;
@@ -470,8 +510,9 @@ public class WebCrawler {
     /**
      * Gets the follow image links switch.
      *
-     * @return {@code true} if the image links are to be followed;
-     * {@code false} otherwise.
+     * @return
+     *     {@code true} if the image links are to be followed; {@code false}
+     *     otherwise.
      */
     public boolean doFollowImgLinks() {
         return followImgLinks;
@@ -480,7 +521,8 @@ public class WebCrawler {
     /**
      * Gets the agent name used to "introduce" to web servers.
      *
-     * @return The agent name.
+     * @return
+     *     The agent name.
      */
     public String getAgent() {
         return agent;
@@ -489,13 +531,21 @@ public class WebCrawler {
     /**
      * Gets the web crawler's executor service.
      *
-     * @return The executor service.
+     * @return
+     *     The executor service.
      */
     public ExecutorService getExecutor() {
         return executor;
     }
 
+    /**
+     * Gets the web crawler's futures.
+     *
+     * @return
+     *     The futures.
+     */
     public Queue<Future<?>> getFutures() {
         return futures;
     }
+
 }

@@ -139,8 +139,8 @@ public class Spider implements Runnable {
                             // urls might be relative to current page
 //                            URL link = new URL(url, links.elementAt(n));
                             URL link = new URL(iter.next());
-                            spiderman.crawl(new Spider(0, link, level + 1, spiderman));
-                            linkNumber++;
+                            if (spiderman.crawl(new Spider(0, link, level + 1, spiderman)))
+                                linkNumber++;
                         }
                         catch (MalformedURLException murle) {
                             murle.printStackTrace();
@@ -149,7 +149,7 @@ public class Spider implements Runnable {
                         }
                     }
 
-                    info.append(linkNumber + " valid links found.\n");
+                    info.append(linkNumber + " new valid links found.\n");
                 }
             }
 
@@ -297,4 +297,27 @@ public class Spider implements Runnable {
         writer.close();
     }
 
+
+    // -- Getters / Setters
+
+
+    /**
+     * Gets the URL the to be crawled.
+     *
+     * @return
+     *     The URL.
+     */
+    public URL getUrl() {
+        return url;
+    }
+
+    /**
+     * Gets the (depth) level of this crawl.
+     *
+     * @return
+     *     The level.
+     */
+    public int getLevel() {
+        return level;
+    }
 }
