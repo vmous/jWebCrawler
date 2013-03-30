@@ -8,6 +8,7 @@
 <entry key="maximumFileNumber">2000</entry>
 <entry key="logFilePath"></entry>
 <entry key="storagePath">/tmp/jcrawler/</entry>
+<entry key="sitemapAssisted">true</entry>
 <entry key="timeout">5</entry>
 <entry key="verbose">true</entry>
 <entry key="followImgLinks">true</entry>

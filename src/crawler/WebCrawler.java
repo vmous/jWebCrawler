@@ -3,6 +3,7 @@ package crawler;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -11,6 +12,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import toolbox.web.sitemap.SAXSitemapParser;
+import toolbox.web.sitemap.WebPage;
 
 
 /**
@@ -80,6 +84,7 @@ public class WebCrawler {
             "-o<PATHTOFILE>\n\tLog messages to the file denoted by PATHTOFILE. If no -o and/or PATHTOFILE is defined then logging will be directed to standard out. Can alternatively be handled by setting the \"logFilePath\" configuration property.\n" +
             "-p<PATH>\n\tSave retrieved files under PATH directory. Can alternatively be handled by setting the \"storagePath\" configuration property.\n" +
 //            "-R\n\tComma-separated list of rejected mimes.\n" +
+            "-s<URL>\n\tCrawl the pages dictated by the sitemap on this URL Can alternatively be handled by setting the \"sitemapURL\" configuration property.\n" +
             "-t<SECONDS>\n\tSet SECONDS for HTTP connection time-outs. Can alternatively be handled by setting the \"timeout\" configuration property.\n" +
             "-v\n\tBe verbose. Can alternatively be handled by setting the \"verbose\" configuration property.\n" +
             "-x\n\tDo not follow the image links. Can alternatively be handled by setting the \"followImgLinks\" configuration property.\n";
@@ -139,6 +144,12 @@ public class WebCrawler {
     private final String agent;
 
     /**
+     * Set whether the URL provided by the user should be treated as a sitemap
+     * with which the crawling process should be initialized.
+     */
+    private final boolean sitemapAssisted;
+
+    /**
      * The crawler's configurator.
      */
     private static final WebCrawlerConfigurator configurator = WebCrawlerConfigurator.getInstance();
@@ -188,6 +199,9 @@ public class WebCrawler {
 
         followImgLinks = configurator.propertyBoolean("followImgLinks");
 //        System.out.println("followImgLinks " + followImgLinks);
+
+        sitemapAssisted = configurator.propertyBoolean("sitemapAssisted");
+//        System.out.println("sitemapAssisted " + sitemapAssisted);
 
         agent = configurator.property("agent");
 //        System.out.println("agent " + agent);
@@ -268,6 +282,10 @@ public class WebCrawler {
 //                        // comma-separated list of rejected extensions.
 //                        configurator.assign("accept", args[i].substring(2, args[i].length()));
 //                        break;
+                    case 's':
+                        // Determine the URL given is a sitemap.
+                        configurator.assign("sitemapAssisted", "true");
+                        break;
                     case 't':
                         // define connection time-out period
                         configurator.assign("timeout", args[i].substring(2, args[i].length()));
@@ -357,8 +375,18 @@ public class WebCrawler {
      *     The initial URL.
      */
     public void start(URL url) {
-        System.out.println("Crawler started...");
-        crawl(new Spider(0, url, 0, this));
+        System.out.println("Starting crawler...");
+        if (isSitemapAssisted()) {
+            System.out.println("Accessing sitemap: " + url.toString());
+            SAXSitemapParser parser = new SAXSitemapParser(url);
+            List<WebPage> webpages = parser.parse();
+            for (WebPage page: webpages) {
+                crawl(new Spider(0, page.getLocation(), 0, this));
+            }
+        }
+        else {
+            crawl(new Spider(0, url, 0, this));
+        }
     }
 
     /**
@@ -526,6 +554,17 @@ public class WebCrawler {
      */
     public String getAgent() {
         return agent;
+    }
+
+    /**
+     * Gets the sitemap assisted switch.
+     *
+     * @return
+     *     {@code true} if the crawl is to be assisted by a sitemap;
+     *     {@code false} otherwise.
+     */
+    public boolean isSitemapAssisted() {
+        return sitemapAssisted;
     }
 
     /**
