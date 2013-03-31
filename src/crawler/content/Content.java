@@ -29,6 +29,9 @@ public class Content {
     @Column(name="title")
     private String title;
 
+    @Column(name="content")
+    private String content;
+
     /**
      * Defines the relationship that a {@code Content} object references a
      * single {@code Domain} target with the specified foreign key.
@@ -139,6 +142,26 @@ public class Content {
      */
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    /**
+     * Gets the content.
+     *
+     * @return
+     *     The content.
+     */
+    public String getContent() {
+        return content;
+    }
+
+    /**
+     * Sets the content.
+     *
+     * @param content
+     *     The content to set.
+     */
+    public void setContent(String content) {
+        this.content = content;
     }
 
     /**

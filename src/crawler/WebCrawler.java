@@ -79,6 +79,7 @@ public class WebCrawler {
             "-d<LEVELS>\n\tSpecify maximum LEVELS number of recursion depth. Can alternatively be handled by setting the \"depth\" configuration property.\n" +
             "-h\n\tPrint this help.\n" +
             "-H\n\tPrint the application's header information.\n" +
+            "-i<PATH>\n\tSave index under PATH directory. Can alternatively be handled by setting the \"indexPath\" configuration property.\n" +
             "-m<NUMBER>\n\tSpecify NUMBER of maximum threads in the pool. Can alternatively be handled by setting the \"threadNumber\" configuration property.\n" +
             "-n<NUMBER>\n\tBound to NUMBER maximum files downloaded. Can alternatively be handled by setting the \"maximumFileNumber\" configuration property.\n" +
             "-o<PATHTOFILE>\n\tLog messages to the file denoted by PATHTOFILE. If no -o and/or PATHTOFILE is defined then logging will be directed to standard out. Can alternatively be handled by setting the \"logFilePath\" configuration property.\n" +
@@ -114,6 +115,11 @@ public class WebCrawler {
      * into.
      */
     private final String storagePath;
+
+    /**
+     * The path to the file-system where the indexing will be stored into.
+     */
+    private final String indexPath;
 
     /**
      * The maximum number of files allowed to be downloaded. Set it to a value
@@ -188,6 +194,9 @@ public class WebCrawler {
         storagePath = configurator.property("storagePath");
 //        System.out.println("storagePath " + storagePath);
 
+        indexPath = configurator.property("indexPath");
+//        System.out.println("indexPath " + indexPath);
+
         maximumFileNumber = configurator.propertyInteger("maximumFileNumber");
 //        System.out.println("maximumFileNumber " + maximumFileNumber);
 
@@ -261,6 +270,10 @@ public class WebCrawler {
                         // Print application header
                         System.out.println(strAppHeader);
                         abort = true;
+                        break;
+                    case 'i':
+                        // Determine index area on local FS
+                        configurator.assign("indexPath", args[i].substring(2, args[i].length()));
                         break;
                     case 'm':
                         // Maximum number of threads
@@ -503,6 +516,17 @@ public class WebCrawler {
      */
     public String getStoragePath() {
         return storagePath;
+    }
+
+    /**
+     * Gets the the path to the file-system where the index will be stored
+     * into.
+     *
+     * @return
+     *     The file-system path where the index will be stored.
+     */
+    public String getIndexPath() {
+        return indexPath;
     }
 
     /**

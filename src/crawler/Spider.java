@@ -16,6 +16,17 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.util.Version;
+
 import crawler.content.Content;
 import crawler.content.Domain;
 import crawler.content.MIME;
@@ -65,7 +76,8 @@ public class Spider implements Runnable {
         String lFilePathName;
         String lFilePath;
         String lFileName;
-        String title;
+        String title = "";
+        String content = "";
 
         info.append("##########" + "\n");
         info.append("# [" + id + "] on \" " + strURL + "\"\n");
@@ -97,10 +109,13 @@ public class Spider implements Runnable {
                 path.mkdirs();
             }
 
-            // Download URL
-            info.append("# Saving to " + lFilePathName + ": ");
-            URLManipulator.streamURLtoFile(url, lFilePathName);
-            info.append("OK\n");
+            info.append("# ** Storing to file-system (" + lFilePathName + "): ");
+            if ( storeToFileSystem(url, lFilePathName) ) {
+                info.append("OK\n");
+            }
+            else {
+                info.append("FAILED\n");
+            }
 
             title = lFileName;
 
@@ -113,6 +128,15 @@ public class Spider implements Runnable {
                 String t = URLManipulator.extractTitle(rawPage, smallPage);
                 if (!t.equals("")) {
                     title = t;
+                    info.append("OK\n");
+                }
+                else {
+                    info.append("FAILED\n");
+                }
+
+                info.append("# Extracting content: ");
+                content = URLManipulator.extractContentStrippingMarkup(rawPage, "<!-- ********** CONTENT ********** -->", "<!-- ********** FOOTER ********** -->");
+                if (!content.equals("")) {
                     info.append("OK\n");
                 }
                 else {
@@ -151,67 +175,23 @@ public class Spider implements Runnable {
 
                     info.append(linkNumber + " new valid links found.\n");
                 }
+
+                info.append("# ** Storing to database: ");
+                if ( storeToDBMS(rFilePathName, lFilePathName, title, content, domainName, contentType) ) {
+                    info.append("OK\n");
+                }
+                else {
+                    info.append("FAILED\n");
+                }
+
+                info.append("# ** Storing to index: ");
+                if ( storeToIndex(rFilePathName, lFilePathName, title, content, domainName, contentType) ) {
+                    info.append("OK\n");
+                }
+                else {
+                    info.append("FAILED\n");
+                }
             }
-
-            info.append("# Storing to database: ");
-
-            // TODO: Make PERSISTENCE_UNIT_NAME a property of the application.
-            EntityManagerFactory emf = Persistence.createEntityManagerFactory("jWebCrawler");
-            EntityManager em = emf.createEntityManager();
-
-            // Begin a new local transaction.
-            em.getTransaction().begin();
-
-            // Read the existing entries.
-
-            // Create the content.
-            Content c = new Content();
-            c.setRemoteURI(rFilePathName);
-            c.setLocalURI(lFilePathName);
-            c.setTitle(title);
-
-            // Create the domain
-            // Check if it already exists.
-            TypedQuery<Domain> dq = em.createQuery("SELECT x FROM Domain x WHERE x.name = '" + domainName + "'", Domain.class);
-            List<Domain> dl = dq.getResultList();
-            Domain d;
-            if (dl.size() == 0) {
-                d = new Domain();
-                d.setName(domainName);
-                // Add this content to the domain's set.
-                d.getContents().add(c);
-            }
-            else {
-                assert (dl.size() == 1);
-                d = dl.remove(0);
-            }
-            // Set the domain for this content...
-            c.setDomain(d);
-
-            // Create the MIME
-            // Check if it already exists.
-            TypedQuery<MIME> mq = em.createQuery("SELECT x FROM MIME x WHERE x.contentType = '" + contentType + "'", MIME.class);
-            List<MIME> ml = mq.getResultList();
-            MIME m;
-            if (ml.size() == 0) {
-                m = new MIME();
-                m.setContentType(contentType);
-                // Add this contents to the MIME's set.
-                m.getContents().add(c);
-            }
-            else {
-                assert (ml.size() == 1);
-                m = ml.remove(0);
-            }
-            // Set the mime for this content...
-            c.setMime(m);
-
-            em.persist(c);
-
-            // End the local transaction by commit.
-            em.getTransaction().commit();
-
-            em.close();
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -238,6 +218,180 @@ public class Spider implements Runnable {
             }
         }
     }
+
+
+    private boolean storeToFileSystem(URL url, String file) {
+        boolean success = true;
+
+        try {
+            URLManipulator.streamURLtoFile(url, file);
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+            success = false;
+        }
+
+        return success;
+    } // -- storeToFileSystem
+
+
+    /**
+     * Stores the given information into a relational database.
+     *
+     * @param remoteURI
+     *     The remote URI of the indexed web document.
+     * @param localURI
+     *     The local URI of the indexed web document.
+     * @param title
+     *     The title of the indexed web document.
+     * @param content
+     *     The content of the indexed web document.
+     * @param domainName
+     *     The domain name of the indexed web document.
+     * @param contentType
+     *     The content type of the indexed web document.
+     *
+     * @return
+     *     {@code true} if everything went smooth; {@code false} otherwise.
+     */
+    private boolean storeToDBMS(String remoteURI, String localURI, String title,
+            String content, String domainName, String contentType
+            ) {
+        boolean success = true;
+
+
+        // TODO: Make PERSISTENCE_UNIT_NAME a property of the application.
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("jWebCrawler");
+        EntityManager em = emf.createEntityManager();
+
+        // Begin a new local transaction.
+        em.getTransaction().begin();
+
+        // Read the existing entries.
+
+        // Create the content.
+        Content c = new Content();
+        c.setRemoteURI(remoteURI);
+        c.setLocalURI(localURI);
+        c.setTitle(title);
+        c.setContent(content);
+
+        // Create the domain
+        // Check if it already exists.
+        TypedQuery<Domain> dq = em.createQuery("SELECT x FROM Domain x WHERE x.name = '" + domainName + "'", Domain.class);
+        List<Domain> dl = dq.getResultList();
+        Domain d;
+        if (dl.size() == 0) {
+            d = new Domain();
+            d.setName(domainName);
+            // Add this content to the domain's set.
+            d.getContents().add(c);
+        }
+        else {
+            assert (dl.size() == 1);
+            d = dl.remove(0);
+        }
+        // Set the domain for this content...
+        c.setDomain(d);
+
+        // Create the MIME
+        // Check if it already exists.
+        TypedQuery<MIME> mq = em.createQuery("SELECT x FROM MIME x WHERE x.contentType = '" + contentType + "'", MIME.class);
+        List<MIME> ml = mq.getResultList();
+        MIME m;
+        if (ml.size() == 0) {
+            m = new MIME();
+            m.setContentType(contentType);
+            // Add this contents to the MIME's set.
+            m.getContents().add(c);
+        }
+        else {
+            assert (ml.size() == 1);
+            m = ml.remove(0);
+        }
+        // Set the mime for this content...
+        c.setMime(m);
+
+        em.persist(c);
+
+        // End the local transaction by commit.
+        em.getTransaction().commit();
+
+        em.close();
+
+        return success;
+    } // -- storeToDBMS
+
+
+    /**
+     * Stores the given information into a <emph>Lucene</emph> index.
+     *
+     * @param remoteURI
+     *     The remote URI of the indexed web document.
+     * @param localURI
+     *     The local URI of the indexed web document.
+     * @param title
+     *     The title of the indexed web document.
+     * @param content
+     *     The content of the indexed web document.
+     * @param domainName
+     *     The domain name of the indexed web document.
+     * @param contentType
+     *     The content type of the indexed web document.
+     *
+     * @return
+     *     {@code true} if everything went smooth; {@code false} otherwise.
+     */
+    private boolean storeToIndex(String remoteURI, String localURI, String title,
+            String content, String domainName, String contentType
+            ) {
+        boolean success = true;
+        Directory directory = null;
+        Version lv = Version.LUCENE_41;
+        Analyzer a = null;
+        IndexWriterConfig iwc = null;
+        IndexWriter iw = null;
+        Document doc = null;
+
+        try {
+            // Store the index to memory.
+//            directory = new RAMDirectory();
+
+            // Strore the index to the file-system.
+            directory = new NIOFSDirectory(new File(spiderman.getIndexPath()));
+            a = new EnglishAnalyzer(lv);
+            iwc = new IndexWriterConfig(lv, a);
+            iwc.setWriteLockTimeout(20000);
+            iw = new IndexWriter(directory, iwc);
+
+            // Prepare the document.
+            doc = new Document();
+            doc.add(new TextField("remoteURI", remoteURI, Field.Store.YES));
+            doc.add(new TextField("localURI", localURI, Field.Store.YES));
+            doc.add(new TextField("title", title, Field.Store.YES));
+            doc.add(new TextField("content", content, Field.Store.YES));
+            doc.add(new TextField("domainName", domainName, Field.Store.YES));
+            doc.add(new TextField("contentType", contentType, Field.Store.YES));
+
+            // Write the document into the index.
+            iw.addDocument(doc);
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+            success = false;
+        }
+        finally {
+            try {
+                iw.close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+                success = false;
+            }
+        }
+
+        return success;
+    } // -- writeToIndex
+
 
     /**
      * Prepares an HTTP URL connection.

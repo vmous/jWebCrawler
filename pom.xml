@@ -12,6 +12,8 @@
     <eclipselink.version>2.4.0</eclipselink.version>
     <mysqlconnector.version>5.1.21</mysqlconnector.version>
     <junit.version>4.8.2</junit.version>
+    <lucene-core.version>4.1.0</lucene-core.version>
+    <lucene-analyzers-common.version>4.1.0</lucene-analyzers-common.version>
     <jtoolbox.version>0.0.1-SNAPSHOT</jtoolbox.version>
   </properties>
   
@@ -54,6 +56,18 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-core</artifactId>
+      <version>${lucene-core.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-analyzers-common</artifactId>
+      <version>${lucene-analyzers-common.version}</version>
     </dependency>
     
     <dependency>
