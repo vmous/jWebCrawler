@@ -1,5 +1,7 @@
 package crawler;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
@@ -12,6 +14,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.util.Version;
 
 import toolbox.web.sitemap.SAXSitemapParser;
 import toolbox.web.sitemap.WebPage;
@@ -178,6 +189,11 @@ public class WebCrawler {
     private final ConcurrentMap<String, URL> visited;
 
     /**
+     * A writer for full-text indexing.
+     */
+    private IndexWriter luceneIndexWriter = null;
+
+    /**
      * Constructor.
      */
     public WebCrawler() {
@@ -218,6 +234,19 @@ public class WebCrawler {
         executor = Executors.newFixedThreadPool(this.threadNumber);
         futures = new LinkedList<Future<?>>();
         visited = new ConcurrentHashMap<String, URL>();
+
+        try {
+            Directory directory = new NIOFSDirectory(new File(this.indexPath));
+            Version lv = Version.LUCENE_41;
+            Analyzer a = new EnglishAnalyzer(lv);
+            IndexWriterConfig iwc = new IndexWriterConfig(lv, a);
+            iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+            iwc.setWriteLockTimeout(20000);
+            luceneIndexWriter = new IndexWriter(directory, iwc);
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
     }
 
     /**
@@ -451,9 +480,22 @@ public class WebCrawler {
                     System.err.println("Pool did not terminate");
                 }
             }
-            System.out.println("OK");
+
+            // Close index writer
+            try {
+                if (luceneIndexWriter != null) {
+                    luceneIndexWriter.close();
+                }
+            }
+            catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+
+            System.out.println("OK\n");
         }
         catch (InterruptedException ie) {
+            ie.printStackTrace();
+
             // (Re-)Cancel if current thread also interrupted
             executor.shutdownNow();
             // Preserve interrupt status
@@ -609,6 +651,26 @@ public class WebCrawler {
      */
     public Queue<Future<?>> getFutures() {
         return futures;
+    }
+
+    /**
+     * Gets the web crawler's visited URLs.
+     *
+     * @return
+     *     A map containing the web crawler's visited URLs.
+     */
+    public ConcurrentMap<String, URL> getVisited() {
+        return visited;
+    }
+
+    /**
+     * Gets the web crawler's writer used for full-text indexing.
+     *
+     * @return
+     *     The web crawler's lucene index writer.
+     */
+    public IndexWriter getLuceneIndexWriter() {
+        return luceneIndexWriter;
     }
 
 }

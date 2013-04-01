@@ -16,16 +16,10 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.NIOFSDirectory;
-import org.apache.lucene.util.Version;
 
 import crawler.content.Content;
 import crawler.content.Domain;
@@ -346,26 +340,11 @@ public class Spider implements Runnable {
             String content, String domainName, String contentType
             ) {
         boolean success = true;
-        Directory directory = null;
-        Version lv = Version.LUCENE_41;
-        Analyzer a = null;
-        IndexWriterConfig iwc = null;
-        IndexWriter iw = null;
-        Document doc = null;
+        IndexWriter iw;
 
-        try {
-            // Store the index to memory.
-//            directory = new RAMDirectory();
-
-            // Strore the index to the file-system.
-            directory = new NIOFSDirectory(new File(spiderman.getIndexPath()));
-            a = new EnglishAnalyzer(lv);
-            iwc = new IndexWriterConfig(lv, a);
-            iwc.setWriteLockTimeout(20000);
-            iw = new IndexWriter(directory, iwc);
-
+        if ( (iw = spiderman.getLuceneIndexWriter()) != null ) {
             // Prepare the document.
-            doc = new Document();
+            Document doc = new Document();
             doc.add(new TextField("remoteURI", remoteURI, Field.Store.YES));
             doc.add(new TextField("localURI", localURI, Field.Store.YES));
             doc.add(new TextField("title", title, Field.Store.YES));
@@ -374,19 +353,15 @@ public class Spider implements Runnable {
             doc.add(new TextField("contentType", contentType, Field.Store.YES));
 
             // Write the document into the index.
-            iw.addDocument(doc);
-        }
-        catch (IOException ioe) {
-            ioe.printStackTrace();
-            success = false;
-        }
-        finally {
             try {
-                iw.close();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
+                iw.addDocument(doc);
+            } catch (IOException e) {
+                e.printStackTrace();
                 success = false;
             }
+        }
+        else {
+            success = false;
         }
 
         return success;
