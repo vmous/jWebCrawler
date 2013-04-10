@@ -1,6 +1,6 @@
 # Web Crawler
 
-A multi-threaded, database-assisted, sitemap-aware, web crawler.
+A multi-threaded, content-indexing, database-assisted, sitemap-aware, web crawler.
 
 ## Configuration
 
